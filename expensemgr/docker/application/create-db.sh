@@ -4,4 +4,3 @@ echo "Creating Expensemgr database..."
 
 echo "Running alembic migrations..."
 poetry run alembic upgrade head
-poetry run alembic revision --autogenerate
