@@ -6,3 +6,7 @@ class ExpenseBase(BaseModel):
 
 class CreateExpense(ExpenseBase):
     currency_id: int
+
+class ExpenseOut(ExpenseBase):
+    expense_id: int
+    currency_abbr: str

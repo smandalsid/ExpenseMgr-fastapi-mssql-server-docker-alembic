@@ -1,17 +1,21 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
+from typing import Annotated
 
 from expensemgr.database.db import db_dependency
-from expensemgr.schemas.users import CreateUser, UserBase
+from expensemgr.schemas.users import CreateUser, UserOut
 from expensemgr.database.models.users import User
+from expensemgr.services.auth import AuthService
 
 from .utils import bcrypt_context
+
+user_dependency = Annotated[dict, Depends(AuthService.get_current_user)]
 
 class UserService:
 
     def __init__(self, db: db_dependency):
         self.db = db
 
-    def create_user(self, create_user: CreateUser) -> UserBase:
+    def create_user(self, create_user: CreateUser) -> UserOut:
 
         if self.db.query(User).filter(User.username == create_user.username).first():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
@@ -36,3 +40,11 @@ class UserService:
 
         user = self.db.query(User).filter(User.user_id == create_user_model.user_id).first()
         return user
+
+    def get_user(self, user: user_dependency):
+
+        user_response = self.db.query(User).filter(User.user_id == user.get('id')).first()
+        if user_response is not None:
+            return user_response
+        else:
+            return None

@@ -31,12 +31,6 @@ class UserLogin(BaseModel):
     password: str
     
 
-# {
-#   "username": "string3",
-#   "first_name": "string3",
-#   "last_name": "string3",
-#   "email": "user3@example.com",
-#   "phone_number": "3333333333",
-#   "password": "string3",
-#   "retyped_password": "string2"
-# }
+
+class UserOut(UserBase):
+    is_admin: bool

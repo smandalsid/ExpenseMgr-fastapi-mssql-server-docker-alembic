@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import timedelta
 
 from ..database.db import db_dependency
-from ..schemas.users import CreateUser, UserBase
+from ..schemas.users import CreateUser, UserOut
 from ..services.users import *
 from..services.auth import AuthService
 from ..schemas.auth import Token
@@ -14,7 +14,7 @@ router = APIRouter(
     tags=['auth']
 )
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserBase)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserOut)
 async def create_user(db: db_dependency, create_user: CreateUser):
     service = UserService(db=db)
     return service.create_user(create_user=create_user)

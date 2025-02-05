@@ -6,6 +6,7 @@ class Currency(Base):
     __tablename__ = "currency"
 
     currency_id = Column(Integer, primary_key=True, index=True)
+    created_by = Column(Integer, ForeignKey("users.user_id"))
     abbr = Column(String(10), unique=True, index=True, nullable=False)
     desc = Column(String(255), nullable=False)
 
