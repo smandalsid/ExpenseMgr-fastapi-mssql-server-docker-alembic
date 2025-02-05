@@ -40,6 +40,5 @@ class AuthService:
             else:
                 return {'username': username, 'id': user_id, 'is_admin': is_admin}
         except:
-            print("hello")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
         

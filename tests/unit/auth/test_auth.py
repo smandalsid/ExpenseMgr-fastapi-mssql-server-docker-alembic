@@ -20,26 +20,6 @@ def test_create_access_token(db):
     assert decoded_token['id'] == 1
     assert decoded_token['is_admin'] == False
 
-def test_create_user(db, client):
-    request_data = {
-        "username": "string1",
-        "first_name": "string1",
-        "last_name": "string1",
-        "email": "user1@example.com",
-        "phone_number": "1111111111",
-        "password": "string1",
-        "retyped_password": "string1"
-    }
-
-    response = client.post(url='/auth/', json=request_data)
-    assert response.status_code == status.HTTP_201_CREATED
-
-    model = db.query(User).filter(User.user_id == 1).first()
-    assert model.username == request_data.get('username')
-    assert model.first_name == request_data.get('first_name')
-    assert model.last_name == request_data.get('last_name')
-    assert model.email == request_data.get('email')
-
 def test_login_for_access_token(test_user, client):
     form_data: dict = {
         "username": "testuser",

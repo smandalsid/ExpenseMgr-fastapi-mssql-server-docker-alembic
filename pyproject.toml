@@ -18,6 +18,7 @@ factory-boy = "^3.3.1"
 pytest-asyncio = "^0.25.2"
 pyodbc = "^5.2.0"
 alembic = "^1.14.1"
+pytest-cov = "^6.0.0"
 
 
 [build-system]

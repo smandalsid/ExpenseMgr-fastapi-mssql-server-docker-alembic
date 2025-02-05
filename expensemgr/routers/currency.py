@@ -18,7 +18,7 @@ async def create_currency(user: user_dependency, db: db_dependency, currency: Cu
     
     return CurrencyService(db=db, user=user).create_currency(currency=currency)
 
-@router.post("/get_all", status_code=status.HTTP_200_OK, response_model=List[CurrencyOut])
+@router.get("/get_all", status_code=status.HTTP_200_OK, response_model=List[CurrencyOut])
 async def get_all_currency(user: user_dependency, db: db_dependency):
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed")

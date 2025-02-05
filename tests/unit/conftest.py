@@ -14,6 +14,7 @@ from expensemgr.main import app
 from expensemgr.services.auth import AuthService
 from expensemgr.services.utils import bcrypt_context
 from expensemgr.database.models.users import User
+from expensemgr.database.models.expense import Currency, Expense
 from expensemgr.services.utils import *
 
 load_dotenv()
@@ -26,37 +27,24 @@ TestingSessionLocal=sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def setup_test_database():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def db(setup_test_database):
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind = connection)
-    
+    session.expire_on_commit = False
     yield session
     session.close()
     transaction.rollback()
     connection.close()
 
-# def override_get_db(db):
-#         try:
-#             yield db
-#         finally:
-#             db.close()
-# def override_get_current_user():
-#     return {'username':'testuser', 'id':1, 'is_admin':False}
-
-# app.dependency_overrides[AuthService.get_current_user]=override_get_current_user
-# app.dependency_overrides[get_db]=override_get_db
-
-# client = TestClient(app)
-
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def client(db: Session) -> Generator[TestClient, any, any]:
     def override_get_db():
         try:
@@ -73,7 +61,7 @@ def client(db: Session) -> Generator[TestClient, any, any]:
         yield client
     app.dependency_overrides.clear()
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def test_user(db):
     user = User(
         username='testuser',
@@ -85,24 +73,46 @@ def test_user(db):
     )
     db.add(user)
     db.commit()
-
     yield user
 
-    # with engine.connect() as connection:
-    #     connection.execute(text("DELETE FROM USERS;"))
-    #     connection.commit()
-
-
-# @pytest.fixture(autouse=True)
-# def set_session_for_factories(db: Session):
-#     UserFactory._meta.sqlalchemy_session = db
-
-
-@pytest.fixture(scope="function")
-def user(db, test_user, client: TestClient):
+@pytest.fixture(scope="module")
+def regular_user(db, test_user, client: TestClient):
     user : User = test_user
     access_token: str = AuthService(db).create_access_token(user.username, user.user_id, user.is_admin, timedelta(30))
     headers = {'Authorization' : f"Bearer {access_token}"}
     client.headers.update(headers)
     yield user
     client.headers.clear()
+
+@pytest.fixture(scope="module")
+def admin_user(db, test_user, client: TestClient):
+    user : User = test_user
+    access_token: str = AuthService(db).create_access_token(user.username, user.user_id, True, timedelta(30))
+    headers = {'Authorization' : f"Bearer {access_token}"}
+    client.headers.update(headers)
+    yield user
+    client.headers.clear()
+
+@pytest.fixture(scope="module")
+def currency(db, admin_user: User):
+    test_currency = Currency(
+        created_by = admin_user.user_id,
+        abbr = "TESTCUR",
+        desc = "Test Currency"
+    )
+    db.add(test_currency)
+    db.commit()
+    yield test_currency
+
+@pytest.fixture(scope="module")
+def expense(db, regular_user: User, currency: Currency):
+    test_expense = Expense(
+        user_id = regular_user.user_id,
+        currency_id = currency.currency_id,
+        amount = 100,
+        description = "Test Expense"
+    )
+
+    db.add(test_expense)
+    db.commit()
+    yield test_expense
