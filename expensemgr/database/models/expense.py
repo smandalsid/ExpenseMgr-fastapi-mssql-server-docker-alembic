@@ -72,7 +72,8 @@ class Expense(Base):
     )
     total_amount = Column(Float, nullable=False)
     expense_desc = Column(String(255))
-    meta_changed_dttm = Column(DateTime, default=func.now())
+    meta_created_dttm = Column(DateTime, default=func.now(), nullable=False)
+    meta_changed_dttm = Column(DateTime, default=func.now(), nullable=False)
     meta_changed_by = Column(
         Integer, ForeignKey("user_schema.user.user_key"), nullable=False
     )

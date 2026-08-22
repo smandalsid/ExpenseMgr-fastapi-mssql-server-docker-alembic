@@ -79,6 +79,7 @@ class ExpenseService:
                 Currency.currency_code.label("currency_code"),
                 DivisionBy.division_by_code.label("division_by_code"),
                 ExpenseVer.expense_ver_status.label("expense_ver_status"),
+                Expense.meta_created_dttm.label("meta_created_dttm"),
                 Expense.meta_changed_dttm.label("meta_changed_dttm"),
                 ExpenseVer.version_active_ind.label("version_active_ind"),
             )
@@ -122,6 +123,8 @@ class ExpenseService:
                     expense_share=row.expense_share,
                     expense_ver_status=row.expense_ver_status,
                     version_active_ind=row.version_active_ind,
+                    meta_created_dttm=row.meta_created_dttm,
+                    meta_changed_dttm=row.meta_changed_dttm
                 )
                 for row in rows
             ],
@@ -191,6 +194,7 @@ class ExpenseService:
                         expense_desc=expense.expense_desc,
                         meta_changed_by=self.user.get("user_key"),
                         expense_status=self_expense,
+                        meta_created_dttm=now,
                         meta_changed_dttm=now,
                     )
                 )
