@@ -4,6 +4,7 @@ from pydantic import BaseModel, model_validator
 from pydantic_core import PydanticCustomError
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import array
+from datetime import datetime
 
 from expensemgr.database.db import get_db_class, DB
 from expensemgr.database.models.expense import (
@@ -105,6 +106,8 @@ class ExpenseShare(BaseModel):
     expense_share: float
     expense_ver_status: bool
     version_active_ind: bool
+    meta_changed_dttm: datetime
+    meta_created_dttm: datetime
 
 
 class ExpenseOut(BaseModel):
