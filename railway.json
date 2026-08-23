@@ -1,0 +1,6 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "deploy": {
+    "startCommand": "fastapi run expensemgr/main.py --port $PORT"
+  }
+}
