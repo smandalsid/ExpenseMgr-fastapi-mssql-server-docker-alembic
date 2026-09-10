@@ -21,15 +21,14 @@ TEST_DATABASE_URL = os.getenv("TESTDB_URL")
 ENV = os.getenv("ENV")
 
 SQL_SERVER_URL = URL.create(
-    drivername="mssql+pyodbc",
+    # pymssql (FreeTDS) is used instead of pyodbc because serverless platforms like
+    # Vercel don't have the unixODBC/msodbcsql18 shared libraries installed
+    drivername="mssql+pymssql",
     username=os.getenv("SQL_USER"),
     password=os.getenv("SQL_PASSWORD"),
     host=os.getenv("SQL_SERVER"),
+    port=int(os.getenv("SQL_PORT", "1433")),
     database=os.getenv("SQL_DB_NAME"),
-    query={
-        "driver": os.getenv("SQL_DRIVER", "{ODBC Driver 18 for SQL Server}").strip("{}"),
-        "TrustServerCertificate": "yes",
-    },
 )
 
 metadata = MetaData()
