@@ -2,8 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, model_validator
 from pydantic_core import PydanticCustomError
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import select, case, exists
 from datetime import datetime
 
 from expensemgr.database.db import get_db_class, DB
@@ -22,7 +21,7 @@ class UserExpenseShare(BaseModel):
 
 
 class EditUserExpenseShare(UserExpenseShare):
-    expense_ver_key: int
+    expense_ver_key: int | None = None
 
 
 class CreateExpense(BaseModel):
@@ -128,12 +127,15 @@ class EditExpense(CreateExpense):
     @model_validator(mode="after")
     def validate_expense_key(self):
         db_instance: DB = get_db_class()
-        expense_in_db = db_instance.execute_query(
+        expense_in_db = db_instance.fetch_one_record(
             query=select(
-                select(1).where(Expense.expense_key == self.expense_key).exists(),
+                case(
+                    (exists(select(1).where(Expense.expense_key == self.expense_key)), True),
+                    else_=False,
+                )
             )
         )
-        if not expense_in_db.scalar():
+        if not (expense_in_db and expense_in_db[0]):
             raise PydanticCustomError(
                 "edit-expense-exception", "Expense key does not exist!"
             )
@@ -144,15 +146,16 @@ class EditExpense(CreateExpense):
         db_instance: DB = get_db_class()
         secondary_share_expense_ver_keys = {
             share.expense_ver_key for share in self.user_expense_secondary_share
-        }
-        missing_keys = db_instance.execute_query(
-            query=select(
-                func.unnest(array(secondary_share_expense_ver_keys)).label(
-                    "missing_keys"
+        } - {None}
+        existing_expense_ver_keys = {
+            row[0]
+            for row in db_instance.fetch_records(
+                query=select(ExpenseVer.expense_ver_key).where(
+                    ExpenseVer.expense_ver_key.in_(secondary_share_expense_ver_keys)
                 )
-            ).except_(select(ExpenseVer.expense_ver_key))
-        )
-        if missing_keys.all():
+            )
+        }
+        if secondary_share_expense_ver_keys - existing_expense_ver_keys:
             raise PydanticCustomError(
                 "edit-expense-exception", "Expense shares do not exist!"
             )
@@ -165,9 +168,9 @@ class EditExpense(CreateExpense):
         expense_key = self.expense_key
         secondary_share_expense_ver_keys = {
             share.expense_ver_key for share in self.user_expense_secondary_share
-        }
+        } - {None}
 
-        expense_ver_keys = db_instance.execute_query(
+        expense_ver_keys = db_instance.fetch_records(
             query=select(
                 ExpenseVer.expense_ver_key.label("expense_ver_key"),
             ).where(
@@ -175,7 +178,7 @@ class EditExpense(CreateExpense):
                 ExpenseVer.version_active_ind == VersionActiveInd.ACTIVE.value,
             )
         )
-        if set(expense_ver_keys.scalars().all()) != secondary_share_expense_ver_keys:
+        if {row.expense_ver_key for row in expense_ver_keys} != secondary_share_expense_ver_keys:
             raise PydanticCustomError(
                 "edit-expense-exception", "Expense and Expense shares do not match!"
             )

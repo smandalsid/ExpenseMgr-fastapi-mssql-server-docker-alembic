@@ -18,18 +18,22 @@ class AggregateService:
 
     def get_aggregate(self) -> list[AggregateShareOut]:
         user_key = self.user.get("user_key")
-        user_case = case(
+        partner_case = case(
             (ExpenseVer.primary_user_key == user_key, ExpenseVer.secondary_user_key),
             (ExpenseVer.secondary_user_key == user_key, ExpenseVer.primary_user_key),
         )
-        expense_case = case(
+        signed_share_case = case(
             (ExpenseVer.primary_user_key == user_key, ExpenseVer.expense_share),
             (ExpenseVer.secondary_user_key == user_key, -(ExpenseVer.expense_share)),
         )
 
-        query_cte = (
+        # compute the case expressions once in a derived table so GROUP BY can
+        # reference a plain column instead of repeating the CASE (SQL Server
+        # rejects a SELECT/GROUP BY pair of separately-parameterized CASE exprs)
+        partner_shares = (
             select(
-                user_case.label("user_key"), func.sum(expense_case).label("user_total")
+                partner_case.label("partner_key"),
+                signed_share_case.label("signed_share"),
             )
             .where(
                 ExpenseVer.version_active_ind == VersionActiveInd.ACTIVE.value,
@@ -39,7 +43,15 @@ class AggregateService:
                     ExpenseVer.secondary_user_key == user_key,
                 ),
             )
-            .group_by(user_case)
+            .subquery("partner_shares")
+        )
+
+        query_cte = (
+            select(
+                partner_shares.c.partner_key.label("user_key"),
+                func.sum(partner_shares.c.signed_share).label("user_total"),
+            )
+            .group_by(partner_shares.c.partner_key)
             .cte("shares")
         )
         query = select(

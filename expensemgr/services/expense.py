@@ -14,7 +14,6 @@ from sqlalchemy import (
     exists,
 )
 from sqlalchemy.engine import Connection
-from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import aliased
 
 from expensemgr.database.db import db_dependency
@@ -167,14 +166,15 @@ class ExpenseService:
                         "Cannot create expense where you are not included!"
                     )
 
-                missing_keys = conn.execute(
-                    statement=select(
-                        func.unnest(array(secondary_share_user_keys)).label(
-                            "missing_keys"
+                existing_user_keys = {
+                    row[0]
+                    for row in conn.execute(
+                        statement=select(User.user_key).where(
+                            User.user_key.in_(secondary_share_user_keys)
                         )
-                    ).except_(select(User.user_key))
-                ).all()
-                if missing_keys:
+                    ).all()
+                }
+                if secondary_share_user_keys - existing_user_keys:
                     raise ExpenseCreationException("Not all user keys are valid!")
 
                 self_expense = False
@@ -319,12 +319,18 @@ class ExpenseService:
         engine = self.db.get_engine()
         with engine.begin() as conn:
             query = select(
-                select(1)
-                .where(
-                    ExpenseVer.secondary_user_key == user_key,
-                    ExpenseVer.expense_key == expense.expense_key,
+                case(
+                    (
+                        exists(
+                            select(1).where(
+                                ExpenseVer.secondary_user_key == user_key,
+                                ExpenseVer.expense_key == expense.expense_key,
+                            )
+                        ),
+                        True,
+                    ),
+                    else_=False,
                 )
-                .exists()
             )
             if not conn.execute(statement=query).scalar():
                 raise ExpenseEditException(
@@ -416,13 +422,19 @@ class ExpenseService:
 
             is_eligible_to_delete = conn.execute(
                 statement=select(
-                    select(1)
-                    .where(
-                        ExpenseVer.expense_key == expense_key,
-                        ExpenseVer.secondary_user_key == user_key,
-                        ExpenseVer.version_active_ind == VersionActiveInd.ACTIVE.value,
+                    case(
+                        (
+                            exists(
+                                select(1).where(
+                                    ExpenseVer.expense_key == expense_key,
+                                    ExpenseVer.secondary_user_key == user_key,
+                                    ExpenseVer.version_active_ind == VersionActiveInd.ACTIVE.value,
+                                )
+                            ),
+                            True,
+                        ),
+                        else_=False,
                     )
-                    .exists()
                 )
             ).scalar()
             if not is_eligible_to_delete:
@@ -506,15 +518,21 @@ class ExpenseService:
 
         is_user_eligible = conn.execute(
             statement=select(
-                select(1)
-                .where(
-                    ExpenseVer.expense_ver_key == expense_ver_key,
-                    or_(
-                        ExpenseVer.primary_user_key == user_key,
-                        ExpenseVer.secondary_user_key == user_key,
+                case(
+                    (
+                        exists(
+                            select(1).where(
+                                ExpenseVer.expense_ver_key == expense_ver_key,
+                                or_(
+                                    ExpenseVer.primary_user_key == user_key,
+                                    ExpenseVer.secondary_user_key == user_key,
+                                ),
+                            )
+                        ),
+                        True,
                     ),
+                    else_=False,
                 )
-                .exists()
             )
         ).scalar()
 
