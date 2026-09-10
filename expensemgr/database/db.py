@@ -20,21 +20,16 @@ load_dotenv()
 TEST_DATABASE_URL = os.getenv("TESTDB_URL")
 ENV = os.getenv("ENV")
 
-SUPABASE_URL = URL.create(
-    drivername="postgresql+psycopg2",
-    username=os.getenv("SUPABASE_USER"),
-    password=os.getenv("SUPABASE_PASSWORD"),
-    host=os.getenv("SUPABASE_HOST"),
-    port=int(os.getenv("SUPABASE_POOL_PORT", "6543")),
-    database=os.getenv("SUPABASE_DB"),
-)
-SUPABASE_DIRECT_URL = URL.create(
-    drivername="postgresql+psycopg2",
-    username=os.getenv("SUPABASE_USER"),
-    password=os.getenv("SUPABASE_PASSWORD"),
-    host=os.getenv("SUPABASE_HOST"),
-    port=int(os.getenv("SUPABASE_DIRECT_PORT", "5432")),
-    database=os.getenv("SUPABASE_DB"),
+SQL_SERVER_URL = URL.create(
+    drivername="mssql+pyodbc",
+    username=os.getenv("SQL_USER"),
+    password=os.getenv("SQL_PASSWORD"),
+    host=os.getenv("SQL_SERVER"),
+    database=os.getenv("SQL_DB_NAME"),
+    query={
+        "driver": os.getenv("SQL_DRIVER", "{ODBC Driver 18 for SQL Server}").strip("{}"),
+        "TrustServerCertificate": "yes",
+    },
 )
 
 metadata = MetaData()
@@ -59,7 +54,7 @@ class DB:
     @classmethod
     def _initialise(cls):
         cls._engine = create_engine(
-            SUPABASE_URL,
+            SQL_SERVER_URL,
             max_overflow=10,
             pool_size=20,
             # echo=True,echo_pool="debug"
